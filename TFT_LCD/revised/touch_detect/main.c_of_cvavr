@@ -1,0 +1,70 @@
+#include <mega128.h>
+#include <delay.h>
+#include <stdio.h>
+#include <stdint.h>
+
+#include "LCD.h"
+#include "SPI.h"
+#include "TOUCH.h"
+#include "macro.h"
+
+volatile uint8_t Temp_COMDATA_CON = 0x00;
+
+
+void usart1_putchar(char c)
+{
+    if (c == '\n') {
+        while ((UCSR1A & (1 << 5)) == 0); // UDRE1 비트가 1이 될 때까지 대기
+        UDR1 = '\r';
+    }
+    while ((UCSR1A & (1 << 5)) == 0);     // UDRE1 비트가 1이 될 때까지 대기
+    UDR1 = c;
+}
+#define putchar usart1_putchar
+
+
+
+// Declare your global variables here
+
+void main(void)
+{
+    UCSR1A=0x00;
+    UCSR1B=0x08;
+    UCSR1C=0x06;
+    UBRR1H=0x00;
+    UBRR1L=0x67;
+
+    MCUCR = 0X80; // 외부메모리 제어 및 I/O 제어 활성화
+    LED_CON = 0X00; 
+    FND_RELAY_BUZ_CON = 0X00; 
+    COMDATA_CON = 0X00; 
+    DOT_YELLOW_CON = 0X00; 
+    STEPM_CON = 0X00;   
+    
+    UPDATE_COMDATA();
+    lcd_init();
+    touch_init();
+    
+    lcd_clear(BLACK);
+    pritnf("system ready\n");
+
+
+    while (1)
+    {
+        if (!(PIND & (1 << PIND7)))
+        {
+            touch_read_xy();
+            if (touch_error_flag)
+            {
+                printf("TOUCH ERROR\n");
+                touch_error_flag = 0;
+            } 
+            else
+            {
+                printf("Touch axis : %u, %u\n", x, y);
+            }
+        }
+
+        delay_ms(20); //디바운싱
+    }
+}
